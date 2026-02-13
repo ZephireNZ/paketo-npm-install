@@ -52,7 +52,7 @@ func main() {
 				logger,
 				npminstall.NewRebuildBuildProcess(npm, checksumCalculator, environment, logger),
 				npminstall.NewInstallBuildProcess(npm, environment, logger),
-				npminstall.NewCIBuildProcess(npm, checksumCalculator, environment, chronos.DefaultClock, logger),
+				npminstall.NewCIBuildProcess(npm, checksumCalculator, environment, logger),
 			),
 			npminstall.NewPruneBuildProcess(
 				npm,

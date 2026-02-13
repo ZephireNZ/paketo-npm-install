@@ -8,10 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/paketo-buildpacks/libnodejs"
-	"github.com/paketo-buildpacks/packit/v2/chronos"
 	"github.com/paketo-buildpacks/packit/v2/fs"
 	"github.com/paketo-buildpacks/packit/v2/pexec"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
@@ -21,16 +19,14 @@ type CIBuildProcess struct {
 	executable  Executable
 	summer      Summer
 	environment EnvironmentConfig
-	clock       chronos.Clock
 	logger      scribe.Logger
 }
 
-func NewCIBuildProcess(executable Executable, summer Summer, environment EnvironmentConfig, clock chronos.Clock, logger scribe.Logger) CIBuildProcess {
+func NewCIBuildProcess(executable Executable, summer Summer, environment EnvironmentConfig, logger scribe.Logger) CIBuildProcess {
 	return CIBuildProcess{
 		executable:  executable,
 		summer:      summer,
 		environment: environment,
-		clock:       clock,
 		logger:      logger,
 	}
 }
@@ -154,32 +150,22 @@ func (r CIBuildProcess) runPostInstallScripts(workingDir string, postInstallScri
 		return err
 	}
 
-	duration, err := r.clock.Measure(func() error {
-		for _, script := range scriptsToRun {
-			r.logger.Subprocess("Running 'npm run %s'", script)
+	for _, script := range scriptsToRun {
+		r.logger.Subprocess("Running 'npm run %s'", script)
 
-			err := r.executable.Execute(pexec.Execution{
-				Args:   []string{"run", script},
-				Dir:    workingDir,
-				Stdout: r.logger.ActionWriter,
-				Stderr: r.logger.ActionWriter,
-				Env:    environment,
-			})
-			if err != nil {
-				return err
-			}
-
-			r.logger.Break()
+		err := r.executable.Execute(pexec.Execution{
+			Args:   []string{"run", script},
+			Dir:    workingDir,
+			Stdout: r.logger.ActionWriter,
+			Stderr: r.logger.ActionWriter,
+			Env:    environment,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to run post-install script '%s': %w", script, err)
 		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to run post-install scripts: %w", err)
+
+		r.logger.Break()
 	}
-
-	r.logger.Detail("Completed in %s", duration.Round(time.Millisecond))
-	r.logger.Break()
-
 	return nil
 }
 
