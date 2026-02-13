@@ -60,11 +60,16 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 		summer = &fakes.Summer{}
 
 		environment = &fakes.EnvironmentConfig{}
-		environment.LookupCall.Returns.Value = "some-val"
-		environment.LookupCall.Returns.Found = true
+		environment.LookupCall.Stub = func(key string) (string, bool) {
+			switch key {
+			case "NPM_CONFIG_LOGLEVEL":
+				return "some-val", true
+			default:
+				return "", false
+			}
+		}
 
 		buffer = bytes.NewBuffer(nil)
-		clock = chronos.DefaultClock
 
 		process = npminstall.NewCIBuildProcess(executable, summer, environment, scribe.NewLogger(buffer))
 	})
