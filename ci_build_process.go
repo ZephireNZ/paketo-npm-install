@@ -113,7 +113,7 @@ func (r CIBuildProcess) Run(modulesDir, cacheDir, workingDir, npmrcPath string, 
 
 	runPostInstall, postInstallScripts := r.shouldRunPostInstall()
 	if runPostInstall {
-		r.runPostInstallScripts(workingDir, postInstallScripts)
+		err := r.runPostInstallScripts(workingDir, postInstallScripts, environment)
 		if err != nil {
 			return fmt.Errorf("failed to run post-install scripts: %w", err)
 		}
@@ -148,7 +148,7 @@ func (r CIBuildProcess) shouldRunPostInstall() (bool, string) {
 	return true, scripts
 }
 
-func (r CIBuildProcess) runPostInstallScripts(workingDir string, postInstallScripts string) error {
+func (r CIBuildProcess) runPostInstallScripts(workingDir string, postInstallScripts string, environment []string) error {
 	scriptsToRun, err := scriptsToRun(workingDir, postInstallScripts)
 	if err != nil {
 		return err
@@ -156,13 +156,14 @@ func (r CIBuildProcess) runPostInstallScripts(workingDir string, postInstallScri
 
 	duration, err := r.clock.Measure(func() error {
 		for _, script := range scriptsToRun {
-			r.logger.Detail("Running 'npm run %s'", script)
+			r.logger.Subprocess("Running 'npm run %s'", script)
 
 			err := r.executable.Execute(pexec.Execution{
-				Dir:    workingDir,
 				Args:   []string{"run", script},
+				Dir:    workingDir,
 				Stdout: r.logger.ActionWriter,
 				Stderr: r.logger.ActionWriter,
+				Env:    environment,
 			})
 			if err != nil {
 				return err
