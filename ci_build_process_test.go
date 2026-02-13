@@ -165,6 +165,32 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 			})
 		})
 
+		context("when the postinstall scripts change", func() {
+			it.Before(func() {
+				summer.SumCall.Returns.String = "some-cache-sha"
+				environment.LookupCall.Stub = func(key string) (string, bool) {
+					switch key {
+					case "NPM_CONFIG_LOGLEVEL":
+						return "some-val", true
+					case npminstall.PostInstallScripts:
+						return "setup", true
+					default:
+						return "", false
+					}
+				}
+			})
+
+			it("returns true", func() {
+				run, sha, err := process.ShouldRun(workingDir, map[string]interface{}{
+					"cache_sha": "some-cache-sha",
+				}, "some-npmrc-path")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(run).To(BeTrue())
+				Expect(sha).ToNot(Equal("some-cache-sha"))
+			})
+		})
+
 		context("failure cases", func() {
 			context("when the there is an error in the checksummer process", func() {
 				it.Before(func() {
@@ -231,6 +257,28 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 				path, err := os.Readlink(filepath.Join(workingDir, "node_modules"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(path).To(Equal(filepath.Join(modulesDir, "node_modules")))
+			})
+		})
+
+		context("postinstall scripts", func() {
+			it.Before(func() {
+				environment.LookupCall.Stub = func(key string) (string, bool) {
+					switch key {
+					case "NPM_CONFIG_LOGLEVEL":
+						return "some-val", true
+					case npminstall.PostInstallScripts:
+						return "setup1,setup2", true
+					default:
+						return "", false
+					}
+				}
+			})
+
+			it("runs postinstall scripts when present", func() {
+				Expect(process.Run(modulesDir, cacheDir, workingDir, "some-npmrc-path", true)).To(Succeed())
+
+				Expect(executions).To(ContainElement(HaveField("Args", Equal([]string{"run", "setup1"}))))
+				Expect(executions).To(ContainElement(HaveField("Args", Equal([]string{"run", "setup2"}))))
 			})
 		})
 
