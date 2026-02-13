@@ -10,6 +10,7 @@ import (
 
 	npminstall "github.com/paketo-buildpacks/npm-install"
 	"github.com/paketo-buildpacks/npm-install/fakes"
+	"github.com/paketo-buildpacks/packit/v2/chronos"
 	"github.com/paketo-buildpacks/packit/v2/pexec"
 	"github.com/paketo-buildpacks/packit/v2/scribe"
 	"github.com/sclevine/spec"
@@ -30,6 +31,7 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 		summer      *fakes.Summer
 		environment *fakes.EnvironmentConfig
 		buffer      *bytes.Buffer
+		clock       chronos.Clock
 
 		process npminstall.CIBuildProcess
 	)
@@ -64,8 +66,9 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 		environment.LookupCall.Returns.Found = true
 
 		buffer = bytes.NewBuffer(nil)
+		clock = chronos.DefaultClock
 
-		process = npminstall.NewCIBuildProcess(executable, summer, environment, scribe.NewLogger(buffer))
+		process = npminstall.NewCIBuildProcess(executable, summer, environment, clock, scribe.NewLogger(buffer))
 	})
 
 	it.After(func() {
@@ -179,7 +182,7 @@ func testCIBuildProcess(t *testing.T, context spec.G, it spec.S) {
 					executable.ExecuteCall.Stub = func(execution pexec.Execution) error {
 						return errors.New("very bad error")
 					}
-					process = npminstall.NewCIBuildProcess(executable, summer, environment, scribe.NewLogger(buffer))
+					process = npminstall.NewCIBuildProcess(executable, summer, environment, clock, scribe.NewLogger(buffer))
 				})
 
 				it("fails", func() {

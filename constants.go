@@ -8,4 +8,6 @@ const (
 
 	LayerNameNodeModules = "modules"
 	LayerNameCache       = "npm-cache"
+
+	PostInstallScripts = "BP_NPM_POSTINSTALL_SCRIPTS"
 )
